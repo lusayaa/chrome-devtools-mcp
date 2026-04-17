@@ -743,10 +743,13 @@ export class McpContext implements Context {
     let idCounter = 0;
     const idToNode = new Map<string, TextSnapshotNode>();
     const seenUniqueIds = new Set<string>();
+    const seenBackendNodeIds = new Set<number>();
     const assignIds = (node: SerializedAXNode): TextSnapshotNode => {
       let id = '';
-      // @ts-expect-error untyped loaderId & backendNodeId.
-      const uniqueBackendId = `${node.loaderId}_${node.backendNodeId}`;
+      // @ts-expect-error untyped backendNodeId.
+      const backendNodeId: number = node.backendNodeId;
+      // @ts-expect-error untyped loaderId.
+      const uniqueBackendId = `${node.loaderId}_${backendNodeId}`;
       if (uniqueBackendNodeIdToMcpId.has(uniqueBackendId)) {
         // Re-use MCP exposed ID if the uniqueId is the same.
         id = uniqueBackendNodeIdToMcpId.get(uniqueBackendId)!;
@@ -756,6 +759,7 @@ export class McpContext implements Context {
         uniqueBackendNodeIdToMcpId.set(uniqueBackendId, id);
       }
       seenUniqueIds.add(uniqueBackendId);
+      seenBackendNodeIds.add(backendNodeId);
 
       const nodeWithId: TextSnapshotNode = {
         ...node,
@@ -780,15 +784,18 @@ export class McpContext implements Context {
 
     const rootNodeWithId = assignIds(rootNode);
 
-    await this.#insertExtraNodes(
-      page,
-      idToNode,
-      seenUniqueIds,
-      snapshotId,
-      idCounter,
-      rootNodeWithId,
-      extraHandles,
-    );
+    if (extraHandles) {
+      await this.#insertExtraNodes(
+        page,
+        idToNode,
+        seenUniqueIds,
+        snapshotId,
+        idCounter,
+        rootNodeWithId,
+        seenBackendNodeIds,
+        extraHandles,
+      );
+    }
 
     const snapshot: TextSnapshot = {
       root: rootNodeWithId,
@@ -815,7 +822,7 @@ export class McpContext implements Context {
     }
   }
 
-  // ExtraHandles represent DOM nodes which are not part of the accessibility tree, e.g. DOM nodes
+  // ExtraHandles represent DOM nodes which might not be part of the accessibility tree, e.g. DOM nodes
   // returned by in-page tools. We insert them into the tree by finding the closest ancestor in the
   // tree and inserting the node as a child. The ancestor's child nodes are re-parented if necessary.
   async #insertExtraNodes(
@@ -825,7 +832,8 @@ export class McpContext implements Context {
     snapshotId: number,
     idCounter: number,
     rootNodeWithId: TextSnapshotNode,
-    extraHandles?: ElementHandle[],
+    seenBackendNodeIds: Set<number>,
+    extraHandles: ElementHandle[],
   ): Promise<void> {
     const {uniqueBackendNodeIdToMcpId} = page;
 
@@ -833,13 +841,14 @@ export class McpContext implements Context {
       handle: ElementHandle,
     ): Promise<TextSnapshotNode | null> => {
       const backendNodeId = await handle.backendNodeId();
-      if (!backendNodeId) {
+      if (!backendNodeId || seenBackendNodeIds.has(backendNodeId)) {
         return null;
       }
       const uniqueBackendId = `custom_${backendNodeId}`;
       if (seenUniqueIds.has(uniqueBackendId)) {
         return null;
       }
+      seenBackendNodeIds.add(backendNodeId);
 
       let id = '';
       const mcpId = uniqueBackendNodeIdToMcpId.get(uniqueBackendId);

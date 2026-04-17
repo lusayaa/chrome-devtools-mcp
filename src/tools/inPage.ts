@@ -223,15 +223,20 @@ export const executeInPageTool = definePageTool({
     for (let i = 0; i < (result.stashed ?? 0); i++) {
       const elementHandle = await request.page.pptrPage.evaluateHandle(
         index => {
-          return window.__dtmcp?.stashedElements?.[index] ?? null;
+          const el = window.__dtmcp?.stashedElements?.[index];
+          if (!el) {
+            throw new Error(`Stashed element at index ${index} not found`);
+          }
+          return el;
         },
         i,
       );
-      elementHandles.push(elementHandle as ElementHandle);
+      elementHandles.push(elementHandle);
     }
     const resultWithStashedElements = result.result;
 
     let isPageSnapshotUpdated = false;
+
     const stashedToUid = async (index: number) => {
       const backendNodeId = await elementHandles[index].backendNodeId();
       if (!backendNodeId) {
@@ -243,6 +248,7 @@ export const executeInPageTool = definePageTool({
         backendNodeId,
       );
       if (!cdpElementId) {
+
         await context.createTextSnapshot(
           request.page,
           false,
