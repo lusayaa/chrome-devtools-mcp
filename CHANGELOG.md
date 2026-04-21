@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/ChromeDevTools/chrome-devtools-mcp/compare/chrome-devtools-mcp-v0.22.0...chrome-devtools-mcp-v0.22.1) (2026-04-21)
+
+
+### 📄 Documentation
+
+* clarify resource limitations around the number of tabs ([#1927](https://github.com/ChromeDevTools/chrome-devtools-mcp/issues/1927)) ([42be7c3](https://github.com/ChromeDevTools/chrome-devtools-mcp/commit/42be7c32272448b72091d008d1a0edb9b1ad6ec7))
+
 ## [0.22.0](https://github.com/ChromeDevTools/chrome-devtools-mcp/compare/chrome-devtools-mcp-v0.21.0...chrome-devtools-mcp-v0.22.0) (2026-04-21)
 
 
